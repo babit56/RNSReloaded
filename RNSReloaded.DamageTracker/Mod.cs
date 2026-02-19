@@ -122,60 +122,83 @@ public unsafe class Mod : IMod {
     private int selectedPlayer = 0;
     public void Draw() {
         if (!this.ready) return;
-        var open = true;
+        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+            var open = true;
 
-        var buttonSize = new ImVec2 {
-            X = 0,
-            Y = 0
-        };
-        if (ImGui.Begin("Damage", ref open, 0)) {
-            for (int i = 0; i < 4; i++) {
-                ImGui.SameLine(100 * i, 0);
-
-                if (this.selectedPlayer == i) {
-                    ImGui.Text($"Player {i + 1}");
-                } else {
-                    if (ImGui.Button($"Player {i + 1}", buttonSize)) {
-                        this.selectedPlayer = i;
-                        this.logger.PrintMessage("Selected player " + (i + 1), this.logger.ColorGreen);
-                    }
-                }
-            }
-
-            if (ImGui.BeginTable("", 3, 384, buttonSize, 0)) {
-                var orderedKeys = this.damageAmounts[this.selectedPlayer].Keys.Order();
-                ImGui.TableHeadersRow();
-                ImGui.TableNextColumn();
-                ImGui.Text("Source");
-                ImGui.TableNextColumn();
-                ImGui.Text("Damage");
-                ImGui.TableNextColumn();
-                ImGui.Text("Hits");
-                foreach (var key in orderedKeys) {
-                    string hbName = this.hbIdNameOverrides.GetValueOrDefault(key, "");
-                    if (hbName == "") {
-                        if (key > 4 && key < 11) {
-                            hbName = "Item #" + (key - 4);
-                        } else if (key >= 11) {
-                            hbName = "Potion #" + (key - 10);
-                        } else {
-                            hbName = "HB id " + key;
+            var buttonSize = new ImVec2 {
+                X = 0,
+                Y = 0
+            };
+            if (ImGui.Begin("Damage", ref open, 0)) {
+                for (int i = 0; i < 4; i++) {
+                    ImGui.SameLine(0, i == 0 ? 0 : 10);
+                    string playerName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "playerName")->Get(0)->Get(i)->ToString();
+                    if (this.selectedPlayer == i) {
+                        ImGui.Text(playerName);
+                    } else {
+                        if (ImGui.Button(playerName, buttonSize)) {
+                            this.selectedPlayer = i;
                         }
                     }
-                    long damage = this.damageAmounts[this.selectedPlayer][key].damage;
-                    long hits = this.damageAmounts[this.selectedPlayer][key].count;
+                }
+
+                if (ImGui.BeginTable("", 4, 384, buttonSize, 0)) {
+                    var orderedKeys = this.damageAmounts[this.selectedPlayer].Keys.Order();
                     ImGui.TableNextRow(0, 0);
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{hbName}");
+                    ImGui.TableHeader("Source");
+
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{damage}");
+                    ImGui.TableHeader("Damage");
+
                     ImGui.TableNextColumn();
-                    ImGui.Text($"{hits}");
+                    ImGui.TableHeader("Hits");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TableHeader("% Total");
+                    long totalDamage = this.damageAmounts[this.selectedPlayer].Values.Sum(x => x.damage);
+                    foreach (var key in orderedKeys) {
+                        // getting Potion #5 for 2nd player primary (debuffs still debuffs)
+                        var adjustedKey = key;
+                        if (adjustedKey > 0) {
+                            adjustedKey -= this.selectedPlayer * 14;
+                        }
+                        string hbName = this.hbIdNameOverrides.GetValueOrDefault(adjustedKey, "");
+
+                        /* This is wrong, it's going from hbId -> itemIdString, needs to go hbId -> itemId -> itemName
+
+                        if (hbName == "") {
+                            var dataMap = rnsReloaded.utils.GetGlobalVar("itemData");
+                            hbName = dataMap->Get((int) key)->Get(0)->Get(0)->ToString();
+                        }
+                        */
+
+                        if (hbName == "") {
+                            if (key > 4 && key < 11) {
+                                hbName = "Item #" + (adjustedKey - 4);
+                            } else if (key >= 11) {
+                                hbName = "Potion #" + (adjustedKey - 10);
+                            } else {
+                                hbName = "HB id " + adjustedKey;
+                            }
+                        }
+                        long damage = this.damageAmounts[this.selectedPlayer][key].damage;
+                        long hits = this.damageAmounts[this.selectedPlayer][key].count;
+                        ImGui.TableNextRow(0, 0);
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{hbName}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{damage}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{hits}");
+                        ImGui.TableNextColumn();
+                        ImGui.Text($"{Math.Round(100f * damage / totalDamage, 1)}%");
+                    }
+                    ImGui.EndTable();
                 }
-                ImGui.EndTable();
             }
+            ImGui.End();
         }
-        ImGui.End();
     }
 
     public void Suspend() {
