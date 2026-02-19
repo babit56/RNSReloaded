@@ -174,8 +174,6 @@ public unsafe class Mod : IMod {
                 }
                 ImGui.EndTable();
             }
-
-
         }
         ImGui.End();
     }
