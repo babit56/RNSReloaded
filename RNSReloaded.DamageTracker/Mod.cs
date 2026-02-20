@@ -203,9 +203,9 @@ public unsafe class Mod : IMod {
         // it's not really an "index" as we don't array off it, so it shouldn't cause off by 1 errors
         var nameId = this.enemyNameUses.GetValueOrDefault(enemyName, 0) + 1;
         this.enemyNameUses[enemyName] = nameId;
-        this.enemyIdLookup[enemyListId] = enemyName + " " + nameId;
+        this.enemyIdLookup[enemyListId] = $"{enemyName} ({nameId})";
         if (this.initialEnemy == "") {
-            this.initialEnemy = enemyName + " " + nameId;
+            this.initialEnemy = this.enemyIdLookup[enemyListId];
         }
     }
 
@@ -214,8 +214,8 @@ public unsafe class Mod : IMod {
     ) {
         if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
             var enemyRealId = rnsReloaded.utils.RValueToLong(argv[0]);
-            // [key, name w/ title, name w/o title, more stuff]
-            var enemyName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "enemyData")->Get((int) enemyRealId)->Get(2)->ToString();
+            // index 0 is key. We use this instead of index 2 (name w/o title) because it's always in english and CN/JP chars don't display in ImGui
+            var enemyName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "enemyData")->Get((int) enemyRealId)->Get(0)->ToString();
             var enemyListId = rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "playerId"));
             this.AddEnemy(enemyName, enemyListId);
         }
@@ -234,6 +234,7 @@ public unsafe class Mod : IMod {
                 X = 0,
                 Y = 0
             };
+            
             if (ImGui.Begin("Damage", ref open, 0)) {
                 for (int i = 0; i < 4; i++) {
                     ImGui.SameLine(0, i == 0 ? 0 : 10);
