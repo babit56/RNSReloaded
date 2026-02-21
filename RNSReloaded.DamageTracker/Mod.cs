@@ -313,11 +313,11 @@ public unsafe class Mod : IMod {
                         */
 
                         if (hbName == "") {
-                            if (key < 0) {
+                            if (adjustedKey < 0) {
                                 hbName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "hbsInfo")->Get((int) -key)->Get(0)->ToString();
-                            } else if (key > 4 && key < 11) {
+                            } else if (adjustedKey > 4 && key < 11) {
                                 hbName = "Item #" + (adjustedKey - 4);
-                            } else if (key >= 11) {
+                            } else if (adjustedKey >= 11) {
                                 hbName = "Potion #" + (adjustedKey - 10);
                             } else {
                                 hbName = "HB id " + adjustedKey;
