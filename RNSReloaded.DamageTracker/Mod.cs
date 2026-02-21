@@ -35,7 +35,6 @@ public unsafe class Mod : IMod {
     private Dictionary<string, long> enemyNameUses = new Dictionary<string, long>();
 
     private Dictionary<long, string> hbIdNameOverrides = new Dictionary<long, string>() {
-        { -1, "Debuffs" },
         { 1, "Primary" },
         { 2, "Secondary" },
         { 3, "Special" },
@@ -160,6 +159,12 @@ public unsafe class Mod : IMod {
             dmgInfo.damage += damage;
             this.setDamageInfo(playerId, enemyId, hbId, dmgInfo);
 
+            // hbId of -1 means it's a debuff, so we change the ID to be negative of the debuff ID
+            // to avoid collisions with real hbIds
+            if (hbId == -1) {
+                hbId = -rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "statusId"));
+            }
+
             if (this.initialPainshare == 0 || this.enemyIdLookup[enemyId] == this.initialEnemy) {
                 dmgInfo = this.damageAmounts[playerId][DEFAULT_ENEMY].GetValueOrDefault(hbId, new DamageInfo() { count = 0, damage = 0});
                 dmgInfo.count++;
@@ -271,7 +276,13 @@ public unsafe class Mod : IMod {
                 }
 
                 if (ImGui.BeginTable("", 4, 384, buttonSize, 0)) {
-                    var orderedKeys = this.getHbDamageDict(this.selectedPlayer, this.selectedEnemy).Keys.Order();
+                    var orderedKeys = this.getHbDamageDict(this.selectedPlayer, this.selectedEnemy).Keys.ToList();
+                    orderedKeys.Sort((long a, long b) => {
+                        // Debuffs have negative IDs, so we take their absolute value to sort both after regular HBs and in order
+                        if (a < 0) { a = -a; }
+                        if (b < 0) { b = -b; }
+                        return (int) (a - b);
+                    });
                     ImGui.TableNextRow(0, 0);
                     ImGui.TableNextColumn();
                     ImGui.TableHeader("Source");
@@ -302,7 +313,9 @@ public unsafe class Mod : IMod {
                         */
 
                         if (hbName == "") {
-                            if (key > 4 && key < 11) {
+                            if (key < 0) {
+                                hbName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "hbsInfo")->Get((int) -key)->Get(0)->ToString();
+                            } else if (key > 4 && key < 11) {
                                 hbName = "Item #" + (adjustedKey - 4);
                             } else if (key >= 11) {
                                 hbName = "Potion #" + (adjustedKey - 10);
