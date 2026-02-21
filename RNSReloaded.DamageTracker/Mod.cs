@@ -314,13 +314,14 @@ public unsafe class Mod : IMod {
 
                         if (hbName == "") {
                             if (adjustedKey < 0) {
+                                // Using -key instead of -adjustedKey is correct here, as debuffs will always be same ID regardless of player
                                 hbName = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "hbsInfo")->Get((int) -key)->Get(0)->ToString();
-                            } else if (adjustedKey > 4 && key < 11) {
+                            } else if (adjustedKey > 4 && adjustedKey < 11) {
                                 hbName = "Item #" + (adjustedKey - 4);
                             } else if (adjustedKey >= 11) {
                                 hbName = "Potion #" + (adjustedKey - 10);
                             } else {
-                                hbName = "HB id " + adjustedKey;
+                                hbName = "HB id " + key;
                             }
                         }
                         var info = this.getHbDamageDict(this.selectedPlayer, this.selectedEnemy)[key];
