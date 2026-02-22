@@ -6,6 +6,7 @@ using RNSReloaded.Interfaces.Structs;
 using Reloaded.Imgui.Hook;
 using Reloaded.Imgui.Hook.Direct3D11;
 using DearImguiSharp;
+using Reloaded.Imgui.Hook.Implementations;
 namespace RNSReloaded.DamageTracker;
 
 public unsafe class Mod : IMod {
@@ -16,6 +17,8 @@ public unsafe class Mod : IMod {
     private IHook<ScriptDelegate>? damageHook;
     private IHook<ScriptDelegate>? newFightHook;
     private IHook<ScriptDelegate>? addEnemyHook;
+    private IHook<ScriptDelegate>? hallwayMoveHook;
+    private IHook<ScriptDelegate>? chooseHallsHook;
 
     private const string DEFAULT_ENEMY = "Default";
     private struct DamageInfo {
@@ -88,7 +91,8 @@ public unsafe class Mod : IMod {
         if (this.hooksRef != null && this.hooksRef.TryGetTarget(out var hooks)) {
             SDK.Init(hooks);
             ImguiHook.Create(this.Draw, new ImguiHookOptions() {
-                Implementations = [new ImguiHookDx11()]
+                Implementations = [new ImguiHookDx11(), new ImguiHookOpenGL3()],
+                EnableViewports = true
             });
         }
 
@@ -123,6 +127,18 @@ public unsafe class Mod : IMod {
             this.addEnemyHook.Activate();
             this.addEnemyHook.Enable();
 
+            var hallwayMoveScript = rnsReloaded.GetScriptData(rnsReloaded.ScriptFindId("scr_hallwayprogress_move_next") - 100000);
+            this.hallwayMoveHook =
+                hooks.CreateHook<ScriptDelegate>(this.HallwayMoveDetour, hallwayMoveScript->Functions->Function);
+            this.hallwayMoveHook.Activate();
+            this.hallwayMoveHook.Enable();
+
+            var chooseHallsScript = rnsReloaded.GetScriptData(rnsReloaded.ScriptFindId("scr_hallwayprogress_choose_halls") - 100000);
+            this.chooseHallsHook =
+                hooks.CreateHook<ScriptDelegate>(this.ChooseHallsDetour, chooseHallsScript->Functions->Function);
+            this.chooseHallsHook.Activate();
+            this.chooseHallsHook.Enable();
+
             // Player applying debuffs or buffs: (note: called even for buffs that already exist)
             // args[0] = player/enemyID
             // args[1] = always 1?
@@ -138,22 +154,25 @@ public unsafe class Mod : IMod {
 
     private double? initialPainshare = null;
     private string initialEnemy = "";
+    private bool isTreasuresphere = false;
 
     private RValue* EnemyDamageDetour(
         CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
     ) {
-        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+        if (!this.isTreasuresphere && this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
             var hbId = rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "hbId"));
             var damage = rnsReloaded.utils.RValueToLong(argv[2]);
             var playerId = rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "playerId"));
             var enemyId = rnsReloaded.utils.RValueToLong(argv[1]);
 
-            // Find painshare ratio on first enemy and cache it for if it changes to 0 later
-            // (this happens to mell p2 only, currently, but it means we don't care about future summons)
-            if (!this.initialPainshare.HasValue) {
+            // Find nonzero painshare ratio on first enemy and cache it for if it changes to 0 later
+            // (Mell changes it to 0 in p2, and we don't want to track summon damage in her p2)
+            // (Tassha changes it from 0 to 0.75 with her first set of summons)
+            if (!this.initialPainshare.HasValue || this.initialPainshare == 0) {
                 var painShare = rnsReloaded.utils.RValueToDouble(rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "playerPainshareRatio")->Get(1)->Get(0));
                 this.initialPainshare = painShare;
             }
+
             var dmgInfo = this.getDamageInfo(playerId, enemyId, hbId);
             dmgInfo.count++;
             dmgInfo.damage += damage;
@@ -212,6 +231,33 @@ public unsafe class Mod : IMod {
         if (this.initialEnemy == "") {
             this.initialEnemy = this.enemyIdLookup[enemyListId];
         }
+        // Initialize damage dict for enemy, because dict iteration order is based on insertion order
+        // and it's really awkward to see enemy (4) before enemy (3) because we hit 4 first.
+        foreach (var item in this.damageAmounts) {
+            item[this.enemyIdLookup[enemyListId]] = new Dictionary<long, DamageInfo>();
+        }
+    }
+
+    private RValue* HallwayMoveDetour(
+        CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
+    ) {
+        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+            var currentPos = rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "currentPos")) + 1;
+            NotchType thisNotchType = (NotchType) rnsReloaded.utils.RValueToLong(rnsReloaded.FindValue(self, "notches")->Get((int) currentPos)->Get(0));
+            this.isTreasuresphere = thisNotchType == NotchType.Chest;
+        }
+
+        returnValue = this.hallwayMoveHook!.OriginalFunction(self, other, returnValue, argc, argv);
+        return returnValue;
+    }
+
+    private RValue* ChooseHallsDetour(CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
+    ) {
+        this.Reset();
+        this.AddEnemy("Target Dummy", 0);
+
+        returnValue = this.chooseHallsHook!.OriginalFunction(self, other, returnValue, argc, argv);
+        return returnValue;
     }
 
     private RValue* AddEnemyDetour(
@@ -255,7 +301,7 @@ public unsafe class Mod : IMod {
 
                 if (ImGui.TreeNodeStr("Enemy Select")) {
                     if (this.initialPainshare.HasValue && this.initialPainshare != 0) {
-                        ImGui.Text($"Initial Painshare: {this.initialPainshare * 100}%%");
+                        ImGui.Text($"First seen Painshare: {this.initialPainshare * 100}%%");
                     }
 
                     int wrapIndex = 0;
