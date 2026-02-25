@@ -46,6 +46,9 @@ public unsafe class Mod : IMod {
             && this.hooksRef != null
             && this.hooksRef.TryGetTarget(out var hooks)
         ) {
+            if (this.config.shouldSetSeed) {
+                rnsReloaded.LimitOnlinePlay();
+            }
             var initScript = rnsReloaded.GetScriptData(rnsReloaded.ScriptFindId("scr_init_adventure_map") - 100000);
             this.initAdventureHook =
                 hooks.CreateHook<ScriptDelegate>(this.initAdventureDetour, initScript->Functions->Function);
@@ -72,6 +75,7 @@ public unsafe class Mod : IMod {
             var newSeed = this.config.mapSeed;
             this.logger.PrintMessage($"Changing map seed to {newSeed}", this.logger.ColorGreen);
             var mapSeedR = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "mapSeed");
+            mapSeedR->Type = RValueType.Real;
             mapSeedR->Real = newSeed;
 
             this.isFirstEncounter = true;
@@ -83,10 +87,11 @@ public unsafe class Mod : IMod {
         CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
     ) {
         returnValue = this.langStringHook!.OriginalFunction(self, other, returnValue, argc, argv);
-        var key = (*argv)->ToString();
+        var key = argv[0]->ToString();
         if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)
                 && (key == "vd_subtitle" || key == "vd_subtitle2")) {
-            rnsReloaded.CreateString(returnValue,  $"MAP SEED: {this.config.mapSeed}");
+            var mapSeedR = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "mapSeed");
+            rnsReloaded.CreateString(returnValue,  $"MAP SEED: {mapSeedR->ToString()}");
             return returnValue;
         } else {
             return returnValue;
@@ -100,7 +105,8 @@ public unsafe class Mod : IMod {
         if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded) && this.config.shouldChatSeed) {
             if (this.isFirstEncounter) {
                 this.isFirstEncounter = false;
-                var message = rnsReloaded.utils.CreateString($"Using map seed: {this.config.mapSeed}")!.Value;
+                var mapSeedR = rnsReloaded.FindValue(rnsReloaded.GetGlobalInstance(), "mapSeed");
+                var message = rnsReloaded.utils.CreateString($"Using map seed: {mapSeedR->ToString()}")!.Value;
                 rnsReloaded.ExecuteScript("scr_chat_add_mesage_system", null, null, [message]);
             }
         }
