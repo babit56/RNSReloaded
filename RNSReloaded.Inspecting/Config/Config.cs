@@ -6,8 +6,8 @@ public class Config : Configurable<Config> {
     // ReSharper disable InconsistentNaming
 
 
-    [DisplayName("Speed")]
-    [Description("Speed multipier")]
-    [DefaultValue(1.5)]
-    public double SpeedMultiplier { get; set; } = 1.5;
+    [DisplayName("Dump funcs")]
+    [Description("")]
+    [DefaultValue(true)]
+    public bool DumpFuncsConfig { get; set; } = true;
 }

@@ -49,7 +49,7 @@ enum trgType {
   cdCalc4b,
   cdCalc5,
   cdCalc6,
-  cdCalc7, // quickdraw - guessed name
+  cdCalc7, // quickdraw
   strCalc1a,
   strCalc1b,
   strCalc1c,
@@ -313,6 +313,7 @@ enum hotbarStatus {
   targetType, // smite
   floatingTextType, // 2 for decay/freeze, 0 for new wolf vanish and lonely debuffs
   stackMax, // decay freeze
+  paletteId, // used for stack stuff (according to mino in bug thread). Seems to set "r_palette"
   paletteDependant,
 }
 
@@ -330,6 +331,12 @@ enum hbsTargetType {
   both,
   ally,
   enemy,
+}
+
+enum hbsFloatingTextType {
+  none,
+  standard,
+  stack,
 }
 
 enum cdInfo {
@@ -381,12 +388,114 @@ enum goldSource {
 
 // See screnc_data_elm - guessed names - TODO
 enum encounter {
-  name = 2,
-  hitbox,
+  category = 2,
+  key1,
+  posX1,
+  posY1,
+  key2,
+  posX2,
+  posY2,
+  key3,
+  posX3,
+  posY3,
+  key4,
+  posX4,
+  posY4,
 }
 
-enum hbsFloatingTextType {
-  none,
-  standard,
-  stack,
+enum encCategory {
+  none, // Won't be mixed into chaotic random (default)
+  tutorial, // Tutorial enemy (won't be mixed into chaotic random)
+  intro, // Intro area fight (Maxi, Rem etc.)
+  first, // First enemy in an area (Mink, Menna, etc.)
+  second, // Second enemy in an area (Flamebeast, Orn, etc.)
+  mid, // Mid Boss (Saya, Blush etc.)
+  area, // Area Boss (Farrah, Avy, etc.)
+  hallway, // Final hallway fight (Queen's weapons and spelllocks)
+  final, // Final Boss (Witch, Shira)
+}
+
+enum enemy {
+  animKey = 3,
+  animKeyTransform,
+  color,
+  colorSaturated,
+  dialogSprite,
+  dialogSubimg,
+  radius,
+  drawScale,
+  focusScale,
+  isSpawn, // unsure, see mouse army
+  spawnDrawType, // same as prev
+}
+
+enum npc {
+    animKey = 3,
+    color,
+    sprite,
+    subimg,
+}
+
+enum ally {
+    sprite = 4,
+    n1 = 6,
+    n2,
+    n3,
+    n4,
+    d1,
+    o1,
+    s1,
+    r1,
+    g1,
+    e1,
+    d2,
+    o2,
+    s2,
+    r2,
+    g2,
+    e2,
+    d3,
+    o3,
+    s3,
+    r3,
+    g3,
+    e3,
+    d4,
+    o4,
+    s4,
+    r4,
+    g4,
+    e4,
+}
+
+enum anim {
+    key,
+    filepath,
+    filepathLowQuality,
+    spriteNumber,
+    centerX,
+    centerY,
+    headOffsetX,
+    headOffsetY,
+    standing = 10,
+    forward,
+    backward,
+    hurt,
+    death,
+}
+
+enum trinket {
+  sprite = 4,
+  // 5 - maybe flag, idk
+  color = 6,
+  offsetX,
+  offsetY,
+  // 9-12 - idk
+  condFunc = 13,
+  trdr, // some func, idk
+  flag1,
+  flag2,
+  // 17 - idk
+  // 18 - not movedelay, see arctic scarf w. 3000
+  // 19 - idk
 }
