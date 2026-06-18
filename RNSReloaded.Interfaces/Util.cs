@@ -64,4 +64,10 @@ public unsafe interface IUtil {
 
     public void setHallway(List<Notch> hallway, CInstance* self, IRNSReloaded rnsReloaded);
 
+    public RValue[] add_if_not_null(RValue[] args, string fieldName, int? value);
+
+    public RValue[] add_if_not_null(RValue[] args, string fieldName, bool? value);
+
+    public RValue[] add_if_not_null(RValue[] args, string fieldName, double? value);
+
 }
