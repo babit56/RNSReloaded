@@ -1,12 +1,3 @@
-using Reloaded.Hooks.Definitions;
-using Reloaded.Imgui.Hook.Direct3D11;
-using Reloaded.Imgui.Hook.Implementations;
-using Reloaded.Imgui.Hook;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using DearImguiSharp;
 using RNSReloaded.Interfaces;
 
@@ -19,12 +10,18 @@ namespace RNSReloaded.DamageTracker {
         private double? initialPainshare = null;
         private string initialEnemy = "";
         private bool isTreasuresphere = false;
+        long fightStartTime = 0;
+        long fightEndTime = 0;
+        private long lastMoveUsed = 0;
+        private long lastMoveTime = 0;
 
         private IRNSReloaded rnsReloaded;
 
         private struct DamageInfo {
             public long damage;
             public long count;
+            public long uses;
+            public long totalGcd;
         }
 
         // playerId -> normalizedEnemyId -> hbId -> damage info
@@ -54,17 +51,19 @@ namespace RNSReloaded.DamageTracker {
             producer.Subscribe(this.ConsumeNewFight);
             producer.Subscribe(this.ConsumeHallwayMove);
             producer.Subscribe(this.ConsumeChooseHalls);
+            producer.Subscribe(this.ConsumeUseMove);
+            producer.Subscribe(this.ConsumeEndFight);
         }
 
         private DamageInfo getDamageInfo(long playerId, long enemyId, long hbId) {
             // PlayerID will always exist. Probably.
             var playerDict = this.damageAmounts[playerId];
             if (!playerDict.ContainsKey(this.enemyIdLookup.GetValueOrDefault(enemyId, "UNKNOWN_ENEMY"))) {
-                return new DamageInfo() { count = 0, damage = 0 };
+                return new DamageInfo() { count = 0, damage = 0, uses = 0, totalGcd = 0 };
             }
             var enemyDict = playerDict[this.enemyIdLookup.GetValueOrDefault(enemyId, "UNKNOWN_ENEMY")];
             if (!enemyDict.ContainsKey(hbId)) {
-                return new DamageInfo() { count = 0, damage = 0 };
+                return new DamageInfo() { count = 0, damage = 0, uses = 0, totalGcd = 0 };
             }
             return enemyDict[hbId];
         }
@@ -104,6 +103,8 @@ namespace RNSReloaded.DamageTracker {
 
             this.enemyIdLookup.Clear();
             this.enemyNameUses.Clear();
+            this.lastMoveUsed = 0;
+            this.lastMoveTime = 0;
         }
 
         private void AddEnemy(string enemyName, long enemyListId) {
@@ -125,6 +126,8 @@ namespace RNSReloaded.DamageTracker {
         private void ConsumeChooseHalls(LogElementChooseHalls element) {
             this.Reset();
             this.AddEnemy("Target Dummy", 0);
+            this.fightStartTime = 0;
+            this.fightEndTime = 0;
         }
 
         private void ConsumeHallwayMove(LogElementHallwayMove element) {
@@ -133,15 +136,24 @@ namespace RNSReloaded.DamageTracker {
 
         private void ConsumeNewFight(LogElementNewFight element) {
             this.Reset();
+            // You can only start attacking 1833ms after fight start event. Rarely this will trigger a frame early
+            // Causing fight start to be 16 ms before this, but it's very minor and overall 1 frame diff on GCD track
+            // doesn't really matter
+            // Some boss fights also start later but this is the best I have currently.
+            this.fightStartTime = element.gameTime + 1833;
+            this.fightEndTime = 0;
         }
 
         private void ConsumeNewEnemy(LogElementNewEnemy element) {
             this.AddEnemy(element.enemyKey, element.enemyId);
         }
 
+        private void ConsumeEndFight(LogElementEndFight element) {
+            this.fightEndTime = element.gameTime;
+        }
+
         private void ConsumeDamage(LogElementDamage element) {
             if (!this.isTreasuresphere) {
-                
                 // Find nonzero painshare ratio on first enemy and cache it for if it changes to 0 later
                 // (Mell changes it to 0 in p2, and we don't want to track summon damage in her p2)
                 // (Tassha changes it from 0 to 0.75 with her first set of summons)
@@ -155,7 +167,7 @@ namespace RNSReloaded.DamageTracker {
                 this.setDamageInfo(element.playerId, element.enemyId, element.hbId, dmgInfo);
 
                 if (this.initialPainshare == 0 || this.enemyIdLookup[element.enemyId] == this.initialEnemy) {
-                    dmgInfo = this.damageAmounts[element.playerId][DEFAULT_ENEMY].GetValueOrDefault(element.hbId, new DamageInfo() { count = 0, damage = 0 });
+                    dmgInfo = this.damageAmounts[element.playerId][DEFAULT_ENEMY].GetValueOrDefault(element.hbId, new DamageInfo() { count = 0, damage = 0, uses = 0, totalGcd = 0 });
                     dmgInfo.count++;
                     dmgInfo.damage += element.damage;
                     this.damageAmounts[element.playerId][DEFAULT_ENEMY][element.hbId] = dmgInfo;
@@ -174,6 +186,23 @@ namespace RNSReloaded.DamageTracker {
             });
         }
 
+        // Note: this only seems to fire for local characters in multiplayer, not networked players
+        private void ConsumeUseMove(LogElementUseMove element) {
+            if (!this.isTreasuresphere) {
+                var dmgInfo = this.damageAmounts[element.playerId][DEFAULT_ENEMY].GetValueOrDefault(element.hbId, new DamageInfo() { count = 0, damage = 0, uses = 0, totalGcd = 0 });
+                dmgInfo.uses++;
+                dmgInfo.totalGcd += element.gcd;
+                this.damageAmounts[element.playerId][DEFAULT_ENEMY][element.hbId] = dmgInfo;
+                if (element.gcd > 0) {
+                    // Technically these should be split by player, but in practice it only
+                    // matters in local multiplayer and will make a difference of like... 1 second at max
+                    // (they were initially added in to prevent rapid changing of the GCD % display and that's a very minor QoL feature)
+                    this.lastMoveTime = element.gcd;
+                    this.lastMoveUsed = element.gameTime;
+                }
+            }
+        }
+
         public unsafe void Draw() {
             var open = true;
 
@@ -181,6 +210,12 @@ namespace RNSReloaded.DamageTracker {
                 X = 0,
                 Y = 0
             };
+
+            long currentFightEnd = this.fightEndTime;
+            if (this.fightEndTime == 0) {
+                currentFightEnd = this.rnsReloaded.utils.RValueToLong(this.rnsReloaded.FindValue(this.rnsReloaded.GetGlobalInstance(), "gametime"));
+            }
+            long fightDuration = currentFightEnd - this.fightStartTime;
 
             if (ImGui.Begin("Damage", ref open, 0)) {
                 for (int i = 0; i < 4; i++) {
@@ -217,7 +252,37 @@ namespace RNSReloaded.DamageTracker {
                     ImGui.TreePop();
                 }
 
-                if (ImGui.BeginTable("", 4, 384, buttonSize, 0)) {
+                var seconds = fightDuration / 1000f;
+                if (seconds < 60) {
+                    ImGui.Text($"Fight Time: {seconds.ToString("0.0")}s");
+                } else {
+                    ImGui.Text($"Fight Time: {Math.Floor(seconds / 60)}:{(seconds % 60).ToString("00.0")}");
+                }
+                long totalGCD = 0;
+                for (int i = 1; i <= 4; i++) {
+                    var dict = this.getHbDamageDict(this.selectedPlayer, DEFAULT_ENEMY);
+                    if (dict.ContainsKey(i + 14 * this.selectedPlayer)) {
+                        totalGCD += this.getHbDamageDict(this.selectedPlayer, DEFAULT_ENEMY)[i + 14 * this.selectedPlayer].totalGcd;
+                    }
+                }
+                // Don't include full GCD if it hasn't finished yet
+                if (this.lastMoveUsed > 0 && this.lastMoveTime + this.lastMoveUsed > currentFightEnd) {
+                    // Remove the move's GCD
+                    totalGCD -= this.lastMoveTime;
+                    // Comp the progress through GCD
+                    totalGCD += currentFightEnd - this.lastMoveUsed;
+                }
+
+                var gcdSeconds = Math.Round(totalGCD / 1000f, 1);
+                var gcdPercent = Math.Round(100f * (totalGCD / 1000f) / seconds, 1);
+                ImGui.SameLine(0, 5);
+
+                if (gcdSeconds < 60) {
+                    ImGui.Text($"GCD Time: {gcdSeconds.ToString("0.0")}s ({gcdPercent.ToString("00.0")}%%)");
+                } else {
+                    ImGui.Text($"GCD Time: {Math.Floor(gcdSeconds / 60)}:{(gcdSeconds % 60).ToString("00.0")} ({gcdPercent.ToString("00.0")}%%)");
+                }
+                if (ImGui.BeginTable("", 6, 384, buttonSize, 0)) {
                     var orderedKeys = this.getHbDamageDict(this.selectedPlayer, this.selectedEnemy).Keys.ToList();
                     orderedKeys.Sort((long a, long b) => {
                         // Debuffs have negative IDs, so we take their absolute value to sort both after regular HBs and in order
@@ -237,6 +302,13 @@ namespace RNSReloaded.DamageTracker {
 
                     ImGui.TableNextColumn();
                     ImGui.TableHeader("% Total");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TableHeader("Uses");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TableHeader("GCD time");
+
                     long totalDamage = this.getHbDamageDict(this.selectedPlayer, this.selectedEnemy).Values.Sum(x => x.damage);
                     foreach (var key in orderedKeys) {
                         // Adjust hBId for multiplayer, since each player gets 14 HBs
@@ -268,6 +340,15 @@ namespace RNSReloaded.DamageTracker {
                         ImGui.Text($"{info.count}");
                         ImGui.TableNextColumn();
                         ImGui.Text($"{Math.Round(100f * info.damage / totalDamage, 1)}%");
+
+                        if (adjustedKey > 0 && adjustedKey <= 4) {
+                            info = this.getHbDamageDict(this.selectedPlayer, DEFAULT_ENEMY)[key];
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{info.uses}");
+
+                            ImGui.TableNextColumn();
+                            ImGui.Text($"{Math.Round(info.totalGcd / 1000f, 1)}s");
+                        }
                     }
                     ImGui.EndTable();
                 }

@@ -40,12 +40,14 @@ public unsafe class Mod : IMod {
         public int colorIndex;
     }
 
+    // scrbp_make_warning_colormatch_mirror
+    // Might be adding multiple things in one call?
     private Dictionary<string, FuncData> funcLookup = new Dictionary<string, FuncData>() {
         { "scrbp_make_warning_colormatch", new FuncData() { layer = "BattleWarningOver", colorIndex = 3} },
         { "scrbp_make_warning_colormatch_targ", new FuncData() { layer = "BattleEffect", colorIndex = 2} },
         { "scrbp_make_warning_colormatch2_targ", new FuncData() { layer = "BattleWarningUnder", colorIndex = 2} },
         { "scrbp_make_warning_colormatch3", new FuncData() { layer = "BattleWarningOver", colorIndex = 3} },
-        { "scrbp_make_warning_colormatch3_targ", new FuncData() { layer = "BattleEffect", colorIndex = 2} }
+        { "scrbp_make_warning_colormatch3_targ", new FuncData() { layer = "BattleEffect", colorIndex = 2} },
     };
 
     public void Ready() {
@@ -72,6 +74,15 @@ public unsafe class Mod : IMod {
 
                 ScriptHooks[hookStr] = hook;
             }
+            var scriptMirror = rnsReloaded.GetScriptData(rnsReloaded.ScriptFindId("scrbp_make_warning_colormatch_mirror") - 100000);
+            var hookMirror = hooks.CreateHook<ScriptDelegate>(this.ColormatchWarnMirrorDetour, scriptMirror->Functions->Function)!;
+            hookMirror.Activate().Enable();
+            ScriptHooks["scrbp_make_warning_colormatch_mirror"] = hookMirror;
+
+            var scriptSprite = rnsReloaded.GetScriptData(rnsReloaded.ScriptFindId("scr_cddisp_add_spr_pl") - 100000);
+            var hookSprite = hooks.CreateHook<ScriptDelegate>(this.SpriteDetour, scriptSprite->Functions->Function)!;
+            hookSprite.Activate().Enable();
+            ScriptHooks["scr_cddisp_add_spr_pl"] = hookSprite;
         }
     }
 
@@ -127,14 +138,48 @@ public unsafe class Mod : IMod {
         return null;
     }
 
+    private void RecolorRValue(RValue* color, long colorId) {
+        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+            double colorToUse = rnsReloaded.utils.RValueToDouble(color);
+            switch (colorId) {
+                case IBattlePatterns.COLORMATCH_RED:
+                    colorToUse = this.config.RedColor;
+                    break;
+                case IBattlePatterns.COLORMATCH_YELLOW:
+                    colorToUse = this.config.YellowColor;
+                    break;
+                case IBattlePatterns.COLORMATCH_GREEN:
+                    colorToUse = this.config.GreenColor;
+                    break;
+                case IBattlePatterns.COLORMATCH_BLUE:
+                    colorToUse = this.config.BlueColor;
+                    break;
+                case IBattlePatterns.COLORMATCH_PURPLE:
+                    colorToUse = this.config.PurpleColor;
+                    break;
+                default:
+                    this.logger.PrintMessage("Couldn't figure out what color to use. for id " + colorId, this.logger.ColorRed);
+                    break;
+            }
 
+            if (color->Type == RValueType.Real || color->Type == RValueType.Int32 || color->Type == RValueType.Int64) {
+                color->Type = RValueType.Real;
+                color->Real = colorToUse;
+            } else if (color->Type == RValueType.Array) {
+                color->Get(0)->Type = RValueType.Real;
+                color->Get(0)->Real = colorToUse;
+            } else {
+                this.logger.PrintMessage("Unknown color type: " + color->Type + ", value: " + color->ToString(), this.logger.ColorRed);
+            }
+        }
+    }
 
     private RValue* ColormatchWarnDetour(
         string name, CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
     ) {
         var hook = ScriptHooks[name];
         returnValue = hook.OriginalFunction(self, other, returnValue, argc, argv);
-        
+
         if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
             CLayerInstanceElement* ring = this.GetMostRecentObjectFromLayer(this.funcLookup[name].layer);
             if (ring != null) {
@@ -143,53 +188,81 @@ public unsafe class Mod : IMod {
                     this.logger.PrintMessage("Color is null", this.logger.ColorRedLight);
                     return returnValue;
                 }
-                double colorToUse = rnsReloaded.utils.RValueToDouble(color);
                 RValue* colorIdPtr = this.funcLookup[name].colorIndex < argc ? argv[this.funcLookup[name].colorIndex] : null;
                 long colorId = colorIdPtr == null ? -1 : rnsReloaded.utils.RValueToLong(colorIdPtr);
-                switch (colorId) {
-                    case IBattlePatterns.COLORMATCH_RED:
-                        colorToUse = this.config.RedColor;
-                        break;
-                    case IBattlePatterns.COLORMATCH_YELLOW:
-                        colorToUse = this.config.YellowColor;
-                        break;
-                    case IBattlePatterns.COLORMATCH_GREEN:
-                        colorToUse = this.config.GreenColor;
-                        break;
-                    case IBattlePatterns.COLORMATCH_BLUE:
-                        colorToUse = this.config.BlueColor;
-                        break;
-                    case IBattlePatterns.COLORMATCH_PURPLE:
-                        colorToUse = this.config.PurpleColor;
-                        break;
-                    default:
-                        string[] args = new string[argc];
-                        for (int i = 0; i < argc; i++) {
-                            args[i] = argv[i]->ToString();
-                        }
-                        this.logger.PrintMessage("Couldn't figure out what color to use. Args: " + string.Join(", ", args), this.logger.ColorRed);
-                        break;
-                }
-                if (color->Type == RValueType.Real || color->Type == RValueType.Int32 || color->Type == RValueType.Int64) {
-                    color->Type = RValueType.Real;
-                    color->Real = colorToUse;
-                } else if (color->Type == RValueType.Array) {
-                    color->Get(0)->Type = RValueType.Real;
-                    color->Get(0)->Real = colorToUse;
-                } else {
-                    string[] args = new string[argc];
-                    for (int i = 0; i < argc; i++) {
-                        args[i] = argv[i]->ToString();
-                    }
-                    this.logger.PrintMessage("Color type: " + color->Type + ", value: " + color->ToString(), this.logger.ColorRed);
-                    this.logger.PrintMessage("Pattern replace: " + name + ", args: " + string.Join(", ", args), this.logger.ColorRed);
-                }
+                this.RecolorRValue(color, colorId);
 
             }
         }
         return returnValue;
     }
 
+    // Mirror creates multiple elements in the layer, supposedly.
+    private RValue* ColormatchWarnMirrorDetour(
+        CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
+    ) {
+        var hook = ScriptHooks["scrbp_make_warning_colormatch_mirror"];
+        returnValue = hook.OriginalFunction(self, other, returnValue, argc, argv);
+
+        // scrbp_make_warning_colormatch_mirror(0, 250, 4000, 4, 4, 5, 5) -> undefined
+        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+
+            int numCircles = argc - 3; // First 3 args aren't colors.
+            List<long> colorIds = new List<long>();
+            for (int i = 0; i < numCircles; i++) {
+                colorIds.Add(rnsReloaded.utils.RValueToLong(argv[i + 3]));
+            }
+            var layer = this.FindLayer("BattleEffect");
+            List<nint> elems = new List<nint>();
+            if (layer != null) {
+                CLayerElementBase* elem = layer->Elements.First;
+                CLayerElementBase* maxElem = elem;
+                while (elem != null) {
+                    elems.Add((nint) elem);
+                    elem = elem->Next;
+                }
+            } else {
+                this.logger.PrintMessage("Failed to find layer BattleEffect", this.logger.ColorRed);
+                return returnValue;
+            }
+            elems.Sort((a, b) => {
+                var elemA = (CLayerElementBase*) a;
+                var elemB = (CLayerElementBase*) b;
+                return elemB->ID - elemA->ID; // Descending order
+            });
+
+            for (int i = 0; i < Math.Min(numCircles, elems.Count); i++) {
+                CLayerInstanceElement* ring = (CLayerInstanceElement*) elems[i];
+                if (ring != null) {
+                    RValue* color = rnsReloaded.FindValue(ring->Instance, "color");
+                    if (color == null) {
+                        this.logger.PrintMessage("Color is null at ring " + i, this.logger.ColorRedLight);
+                    } else {
+                        double colorToUse = rnsReloaded.utils.RValueToDouble(color);
+                        this.RecolorRValue(color, colorIds[colorIds.Count - (i + 1)]);
+                    }
+                } else {
+                    this.logger.PrintMessage("Ring is null at ring " + i, this.logger.ColorRedLight);
+                }
+            }
+        }
+
+        return returnValue;
+    }
+
+    private RValue* SpriteDetour(CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv) {
+        // scr_cddisp_add_spr_pl(player, "eff_colormatch", 2, ref sprite <whatever>, <sprite ID?>, 0.8, <value>, <same_value>, duration, undefinied, undefined)
+        if (this.rnsReloadedRef!.TryGetTarget(out var rnsReloaded)) {
+            string effType = argv[1]->ToString();
+            if (effType == "eff_colormatch") {
+                RValue* spriteId = argv[4];
+                RValue* color = argv[7];
+                this.RecolorRValue(color, rnsReloaded.utils.RValueToLong(spriteId) + 2);
+            }
+        }
+        returnValue = ScriptHooks["scr_cddisp_add_spr_pl"].OriginalFunction(self, other, returnValue, argc, argv);
+        return returnValue;
+    }
     public void Suspend() {
     }
 
