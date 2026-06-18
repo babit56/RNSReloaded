@@ -109,6 +109,8 @@ public unsafe interface IBattlePatterns {
 
     public void enrage_deco(CInstance* self, CInstance* other, int? warningDelay = null, int? spawnDelay = null);
 
+    public void execute_pattern(CInstance* self, CInstance* other, string pattern, RValue[] args);
+
     // (x, y) refers to the center of the field. Element is which color (purple, yellow, red, blue)
     public void fieldlimit_rectangle(
         CInstance* self, CInstance* other, Position? position = null, int? width = null, int? height = null, int? color = null, int? targetMask = null
@@ -242,6 +244,8 @@ public unsafe interface IBattlePatterns {
     public void ray_spinfast(CInstance* self, CInstance* other, int? warningDelay = null, int? warningRadius = null, int? displayNumber = null, int? spawnDelay = null, int? eraseDelay = null, int? width = null, double? angle = null, Position? position = null, double? rot = null, int? numLasers = null);
 
     public void setgamespeed(CInstance* self, CInstance* other, int? spawnDelay = null, double? timeMult = null);
+
+    public void setzoom(CInstance* self, CInstance* other, double? zoom = null);
 
     public void showgroups(
         CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, (int, int, int, int)? groupMasks = null

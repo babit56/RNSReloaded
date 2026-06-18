@@ -59,7 +59,7 @@ public unsafe class BattlePatterns : IBattlePatterns {
         this.rnsReloaded.ExecuteScript("bpatt_posrot", self, other, args);
     }
 
-    void execute_pattern(CInstance* self, CInstance* other, string pattern, RValue[] args) {
+    public void execute_pattern(CInstance* self, CInstance* other, string pattern, RValue[] args) {
         this.rnsReloaded.ExecuteScript("bpatt_var", self, other, args);
         args = [new RValue(this.rnsReloaded.ScriptFindId(pattern))];
         this.rnsReloaded.ExecuteScript("bpatt_add", self, other, args);
@@ -1080,6 +1080,13 @@ public unsafe class BattlePatterns : IBattlePatterns {
         this.execute_pattern(self, other, "bp_setgamespeed", args);
     }
 
+    public void setzoom(CInstance* self, CInstance* other, double? zoom = null) {
+        RValue[] args = [];
+        args = this.add_if_not_null(args, "scale", zoom);
+
+        this.execute_pattern(self, other, "bp_setzoom", args);
+    }
+
     public void showgroups(
         CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, (int, int, int, int)? groupMasks = null
     ) {
@@ -1093,7 +1100,6 @@ public unsafe class BattlePatterns : IBattlePatterns {
             args = args.Concat([this.utils.CreateString("orderBin_2")!.Value, new RValue(groupMasks.Value.Item3)]).ToArray();
             args = args.Concat([this.utils.CreateString("orderBin_3")!.Value, new RValue(groupMasks.Value.Item4)]).ToArray();
         }
-        
 
         this.execute_pattern(self, other, "bp_showgroups", args);
     }
@@ -1112,7 +1118,6 @@ public unsafe class BattlePatterns : IBattlePatterns {
             args = args.Concat([this.utils.CreateString("orderBin_2")!.Value, new RValue(orderMasks.Value.Item3)]).ToArray();
             args = args.Concat([this.utils.CreateString("orderBin_3")!.Value, new RValue(orderMasks.Value.Item4)]).ToArray();
         }
-
 
         this.execute_pattern(self, other, "bp_showorder", args);
     }
@@ -1268,7 +1273,7 @@ public unsafe class BattlePatterns : IBattlePatterns {
         if (position != null) {
             args = args.Concat([this.utils.CreateString("x")!.Value, new RValue(position.Value.x)]).ToArray();
             args = args.Concat([this.utils.CreateString("y")!.Value, new RValue(position.Value.y)]).ToArray();
-        }        
+        }
 
         this.execute_pattern(self, other, "bp_water2_line", args);
     }
