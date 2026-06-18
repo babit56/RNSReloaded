@@ -381,7 +381,7 @@ public unsafe class Mod : IMod {
                 returnValue = hook.OriginalFunction(self, other, returnValue, argc, argv);
 
                 // Write return value
-                var retString = rnsReloaded.GetString(returnValue);
+                var retString = this.GetString(returnValue);
                 if (scriptName == "rgb") {
                     retString = Rgb64ToHex((long)returnValue->Real);
                 }
@@ -694,6 +694,7 @@ public unsafe class Mod : IMod {
             for (var i = 1; i < argc; i += 1) {
                 var arg = argv[i];
                 var script = rnsReloaded.GetScriptData((int)arg->Real - 100000);
+                // TODO: mult_hitbox_var, cooldown_var, etc
                 if (script != null) {
                     var scrname = rnsReloaded.ExecuteCodeFunction("script_get_name", null, null, [*arg])!.Value.ToString();
                     args.Add(scrname);
