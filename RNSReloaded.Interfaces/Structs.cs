@@ -84,6 +84,60 @@ public unsafe struct RValue {
         }
     }
 
+    // Technically this should cast ints to uint and return long
+    public int ToInt(int defaultValue = 0) {
+        return this.Type switch {
+            RValueType.Real => (int) this.Real,
+            RValueType.Int32 => this.Int32,
+            RValueType.Int64 => this.Int32,
+            RValueType.Bool => (int) this.Real,
+            _ => defaultValue,
+        };
+    }
+
+    // See INT64_RValue in a YYC decompilation (might need debug symbols)
+    private static long RealToLong(double value) {
+        if (Double.IsNaN(value)) {
+            return 0;
+        } else if (Double.IsPositiveInfinity(value)) {
+            return long.MaxValue;
+        } else if (Double.IsNegativeInfinity(value)) {
+            return long.MinValue;
+        } else {
+            return (int)value;
+        }
+    }
+
+    public long ToLong(long defaultValue = 0) {
+        return this.Type switch {
+            RValueType.Real => RealToLong(this.Real),
+            RValueType.Int32 => this.Int32,
+            RValueType.Int64 => this.Int64,
+            RValueType.Bool => RealToLong(this.Real),
+            _ => defaultValue,
+        };
+    }
+
+    public double ToDouble(double defaultValue = 0) {
+        return this.Type switch {
+            RValueType.Real => this.Real,
+            RValueType.Int32 => (double) this.Int32,
+            RValueType.Int64 => (double)(int) this.Int64,
+            RValueType.Bool => this.Real,
+            _ => defaultValue,
+        };
+    }
+
+    public bool ToBool(bool defaultValue = false) {
+        return this.Type switch {
+            RValueType.Real => this.Real > 0.5,
+            RValueType.Int32 => this.Int32 > 0,
+            RValueType.Int64 => this.Int64 > 0,
+            RValueType.Bool => this.Real > 0.5,
+            _ => defaultValue,
+        };
+    }
+
     // Constructors
     public RValue(CInstance* obj) {
         this.Type = RValueType.Object;
@@ -94,6 +148,12 @@ public unsafe struct RValue {
     public RValue(int value) {
         this.Type = RValueType.Int32;
         this.Int32 = value;
+        this.Flags = 0;
+    }
+
+    public RValue(long value) {
+        this.Type = RValueType.Int64;
+        this.Int64 = value;
         this.Flags = 0;
     }
 
@@ -109,10 +169,22 @@ public unsafe struct RValue {
         this.Flags = 0;
     }
 
+    public RValue() {
+        this.Type = RValueType.Undefined;
+        this.Int64 = 0;
+        this.Flags = 0;
+    }
+
     public static implicit operator RValue(CInstance* obj) => new(obj);
     public static implicit operator RValue(int value) => new(value);
+    public static implicit operator RValue(long value) => new(value);
     public static implicit operator RValue(double value) => new(value);
     public static implicit operator RValue(bool value) => new(value);
+
+    public static explicit operator int(RValue value) => value.ToInt();
+    public static explicit operator long(RValue value) => value.ToLong();
+    public static explicit operator double(RValue value) => value.ToDouble();
+    public static explicit operator bool(RValue value) => value.ToBool();
 
     // TODO: creating other primitives, new objects, and new arrays
 }
