@@ -593,10 +593,15 @@ public unsafe class BattlePatterns : IBattlePatterns {
     }
 
     public void gravity_pull(
-        CInstance* self, CInstance* other, double? mult = null
+        CInstance* self, CInstance* other, double? mult = null, Position? position = null
     ) {
         RValue[] args = [];
         args = this.utils.add_if_not_null(args, "mult", mult);
+
+        if (position != null) {
+            args = args.Concat([this.utils.CreateString("x")!.Value, new RValue(position.Value.x)]).ToArray();
+            args = args.Concat([this.utils.CreateString("y")!.Value, new RValue(position.Value.y)]).ToArray();
+        }
 
         this.execute_pattern(self, other, "bp_gravity_pull", args);
     }
@@ -1102,17 +1107,25 @@ public unsafe class BattlePatterns : IBattlePatterns {
     }
 
     public void tailwind(
-        CInstance* self, CInstance* other, int? eraseDelay = null
+        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, int? mult = null
     ) {
         RValue[] args = [];
         args = this.utils.add_if_not_null(args, "eraseDelay", eraseDelay);
+        args = this.utils.add_if_not_null(args, "spawnDelay", spawnDelay);
+        args = this.utils.add_if_not_null(args, "trgBinary", trgBinary);
+        args = this.utils.add_if_not_null(args, "mult", mult);
+
         this.execute_pattern(self, other, "bp_tailwind", args);
     }
 
     public void tailwind_permanent(
-        CInstance* self, CInstance* other
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, int? mult = null
     ) {
         RValue[] args = [];
+        args = this.utils.add_if_not_null(args, "spawnDelay", spawnDelay);
+        args = this.utils.add_if_not_null(args, "trgBinary", trgBinary);
+        args = this.utils.add_if_not_null(args, "mult", mult);
+
         this.execute_pattern(self, other, "bp_tailwind_permanent", args);
     }
 

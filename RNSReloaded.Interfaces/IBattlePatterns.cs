@@ -138,7 +138,7 @@ public unsafe interface IBattlePatterns {
     );
 
     public void gravity_pull(
-        CInstance* self, CInstance* other, double? mult = null
+        CInstance* self, CInstance* other, double? mult = null, Position? position = null
     );
 
     public void gravity_pull_temporary(
@@ -256,11 +256,11 @@ public unsafe interface IBattlePatterns {
     );
 
     public void tailwind(
-        CInstance* self, CInstance* other, int? eraseDelay = null
+        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, int? mult = null
     );
 
     public void tailwind_permanent(
-        CInstance* self, CInstance* other
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, int? mult = null
     );
 
     public void tether(
