@@ -3,6 +3,11 @@ using System.Runtime.InteropServices;
 // ReSharper disable InconsistentNaming
 namespace RNSReloaded.Interfaces.Structs;
 
+public unsafe interface ILinkedListElement<T> where T : unmanaged {
+    T* GetNext();
+    T* GetPrev();
+}
+
 public unsafe delegate RValue* ScriptDelegate(
     CInstance* self, CInstance* other, RValue* returnValue, int argc, RValue** argv
 );
@@ -105,12 +110,20 @@ public unsafe struct RValue {
     }
 
     public static implicit operator RValue(CInstance* obj) => new(obj);
+    public static implicit operator RValue(int value) => new(value);
+    public static implicit operator RValue(double value) => new(value);
+    public static implicit operator RValue(bool value) => new(value);
 
     // TODO: creating other primitives, new objects, and new arrays
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public unsafe struct CInstance; // TODO
+public unsafe struct CInstance : ILinkedListElement<CInstance> {
+    // TODO
+
+    public CInstance* GetNext() => throw new NotImplementedException();
+    public CInstance* GetPrev() => throw new NotImplementedException();
+}
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
 public unsafe struct CScript {
@@ -134,12 +147,42 @@ public unsafe struct RFunctionStringRef {
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public unsafe struct LinkedList<T> where T : unmanaged {
+public unsafe struct LinkedList<T> where T : unmanaged, ILinkedListElement<T> {
     public T* First;
     public T* Last;
     public int Count;
 
-    // TODO: enumerator
+    public Enumerator GetEnumerator() => new Enumerator(this);
+
+    public struct Enumerator {
+        private LinkedList<T> _list;
+        private T* Curr;
+        private bool first;
+
+        internal Enumerator(LinkedList<T> list) {
+            this._list = list;
+            this.Curr = list.First;
+            this.first = true;
+        }
+
+        public T* Current => this.Curr;
+
+        // Contract says it should be run once before it points to first element
+        public bool MoveNext() {
+            if (!this.first) {
+                this.Curr = this.Curr->GetNext();
+            }
+            this.first = false;
+            return this.Curr != null;
+        }
+
+        public void Reset() {
+            this.Curr = this._list.First;
+            this.first = true;
+        }
+
+        public void Dispose() { }
+    }
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
@@ -222,7 +265,7 @@ public unsafe struct CRoom {
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public unsafe struct CLayer {
+public unsafe struct CLayer : ILinkedListElement<CLayer> {
     public int ID;
     public int Depth;
     public float XOffset;
@@ -251,6 +294,19 @@ public unsafe struct CLayer {
     public CLayer* Next;
     public CLayer* Previous;
     public nint GCProxy;
+
+    public CLayer* GetNext() => this.Next;
+    public CLayer* GetPrev() => this.Previous;
+
+    public List<RValue> GetInstances() {
+        RValue[] instances = [];
+        foreach (var element in this.Elements) {
+            if (element->Type != LayerElementType.Instance) { continue; }
+            var instance = (CLayerInstanceElement*) element;
+            instances = [..instances, instance->Instance];
+        }
+        return instances.ToList();
+    }
 }
 
 public enum LayerElementType {
@@ -258,7 +314,7 @@ public enum LayerElementType {
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public unsafe struct CLayerElementBase {
+public unsafe struct CLayerElementBase : ILinkedListElement<CLayerElementBase> {
     public LayerElementType Type;
     public int ID;
     public byte RuntimeDataInitialized;
@@ -269,6 +325,9 @@ public unsafe struct CLayerElementBase {
     public CLayerElementBase* Next;
     public CLayerElementBase* Previous;
     // Random 3 bytes of data, then 5 of pack, then another pointer. Who knows what that is though.
+
+    public CLayerElementBase* GetNext() => this.Next;
+    public CLayerElementBase* GetPrev() => this.Previous;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
