@@ -110,6 +110,10 @@ public unsafe class RNSReloaded : IRNSReloaded, IDisposable {
         return ret;
     }
 
+    public RValue* FindGlobalValue(string name) {
+        return this.FindValue(this.GetGlobalInstance(), name);
+    }
+
     public RValue* ArrayGetEntry(RValue* array, int index) {
         if (array == null) return null;
         if (array->Type != RValueType.Array) return null;

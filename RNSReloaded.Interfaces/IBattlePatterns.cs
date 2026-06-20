@@ -245,6 +245,8 @@ public unsafe interface IBattlePatterns {
 
     public void setgamespeed(CInstance* self, CInstance* other, int? spawnDelay = null, double? timeMult = null);
 
+    public void setgamespeed_temp(CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, double? timeMult = null);
+
     public void setzoom(CInstance* self, CInstance* other, double? zoom = null);
 
     public void showgroups(
@@ -256,11 +258,15 @@ public unsafe interface IBattlePatterns {
     );
 
     public void tailwind(
-        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, int? mult = null
+        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, double? mult = null
     );
 
     public void tailwind_permanent(
-        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, int? mult = null
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, double? mult = null
+    );
+
+    public void teleport_dist(
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, int? type = null, Position[]? offsets = null
     );
 
     public void tether(

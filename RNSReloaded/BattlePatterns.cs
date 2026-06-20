@@ -1064,6 +1064,15 @@ public unsafe class BattlePatterns : IBattlePatterns {
         this.execute_pattern(self, other, "bp_setgamespeed", args);
     }
 
+    public void setgamespeed_temp(CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, double? timeMult = null) {
+        RValue[] args = [];
+        args = this.utils.add_if_not_null(args, "timeMult", timeMult);
+        args = this.utils.add_if_not_null(args, "spawnDelay", spawnDelay);
+        args = this.utils.add_if_not_null(args, "eraseDelay", eraseDelay);
+
+        this.execute_pattern(self, other, "bp_setgamespeed_temp", args);
+    }
+
     public void setzoom(CInstance* self, CInstance* other, double? zoom = null) {
         RValue[] args = [];
         args = this.utils.add_if_not_null(args, "scale", zoom);
@@ -1107,7 +1116,7 @@ public unsafe class BattlePatterns : IBattlePatterns {
     }
 
     public void tailwind(
-        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, int? mult = null
+        CInstance* self, CInstance* other, int? eraseDelay = null, int? spawnDelay = null, int? trgBinary = null, double? mult = null
     ) {
         RValue[] args = [];
         args = this.utils.add_if_not_null(args, "eraseDelay", eraseDelay);
@@ -1119,7 +1128,7 @@ public unsafe class BattlePatterns : IBattlePatterns {
     }
 
     public void tailwind_permanent(
-        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, int? mult = null
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? trgBinary = null, double? mult = null
     ) {
         RValue[] args = [];
         args = this.utils.add_if_not_null(args, "spawnDelay", spawnDelay);
@@ -1127,6 +1136,29 @@ public unsafe class BattlePatterns : IBattlePatterns {
         args = this.utils.add_if_not_null(args, "mult", mult);
 
         this.execute_pattern(self, other, "bp_tailwind_permanent", args);
+    }
+
+    public void teleport_dist(
+        CInstance* self, CInstance* other, int? spawnDelay = null, int? eraseDelay = null, int? type = null, Position[]? offsets = null
+    ) {
+        RValue[] args = [];
+        args = this.utils.add_if_not_null(args, "spawnDelay", spawnDelay);
+        args = this.utils.add_if_not_null(args, "eraseDelay", eraseDelay);
+        args = this.utils.add_if_not_null(args, "type", type);
+
+        if (offsets == null) {
+            this.execute_pattern(self, other, "bp_teleport_dist", args);
+            return;
+        }
+
+        var i = 0;
+        foreach (var pos in offsets) {
+            args = this.utils.add_if_not_null(args, "offX_" + i, pos.x);
+            args = this.utils.add_if_not_null(args, "offY_" + i, pos.y);
+            i += 1;
+        }
+
+        this.execute_pattern(self, other, "bp_teleport_dist", args);
     }
 
     public void tether(

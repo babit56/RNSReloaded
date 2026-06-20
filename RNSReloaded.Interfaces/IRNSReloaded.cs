@@ -20,6 +20,7 @@ public unsafe interface IRNSReloaded {
     public RFunctionStringRef GetTheFunction(int id);
     public CInstance* GetGlobalInstance();
     public RValue* FindValue(CInstance* instance, string name);
+    public RValue* FindGlobalValue(string name);
     public RValue* ArrayGetEntry(RValue* array, int index);
     public RValue? ArrayGetLength(RValue* array);
     public string GetString(RValue* value);
