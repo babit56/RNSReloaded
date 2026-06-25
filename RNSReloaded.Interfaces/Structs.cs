@@ -175,6 +175,13 @@ public unsafe struct RValue {
         this.Flags = 0;
     }
 
+    public RValue(string value) {
+        this = IRNSReloaded.Instance.utils.CreateString(value) switch {
+            { } strR => strR,
+            null => new RValue(),
+        };
+    }
+
     public static implicit operator RValue(CInstance* obj) => new(obj);
     public static implicit operator RValue(int value) => new(value);
     public static implicit operator RValue(long value) => new(value);
@@ -227,29 +234,29 @@ public unsafe struct LinkedList<T> where T : unmanaged, ILinkedListElement<T> {
     public Enumerator GetEnumerator() => new Enumerator(this);
 
     public struct Enumerator {
-        private LinkedList<T> _list;
-        private T* Curr;
+        private LinkedList<T> list;
+        private T* curr;
         private bool first;
 
         internal Enumerator(LinkedList<T> list) {
-            this._list = list;
-            this.Curr = list.First;
+            this.list = list;
+            this.curr = list.First;
             this.first = true;
         }
 
-        public T* Current => this.Curr;
+        public T* Current => this.curr;
 
         // Contract says it should be run once before it points to first element
         public bool MoveNext() {
             if (!this.first) {
-                this.Curr = this.Curr->GetNext();
+                this.curr = this.curr->GetNext();
             }
             this.first = false;
-            return this.Curr != null;
+            return this.curr != null;
         }
 
         public void Reset() {
-            this.Curr = this._list.First;
+            this.curr = this.list.First;
             this.first = true;
         }
 
