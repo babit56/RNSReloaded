@@ -80,7 +80,7 @@ public unsafe class BattlePatterns : IBattlePatterns {
         return args;
     }
 
-    public RValue[] add_if_not_null(RValue[] args, string fieldName, double? value) {
+    private RValue[] add_if_not_null(RValue[] args, string fieldName, double? value) {
         if (value != null) {
             return args.Concat([this.utils.CreateString(fieldName)!.Value, new RValue(value.Value)]).ToArray();
         }
