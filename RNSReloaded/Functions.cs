@@ -11,6 +11,7 @@ public unsafe class Functions {
     public delegate byte CodeFunctionFindDelegate(char* name, int* id);
     public delegate void GetTheFunctionDelegate(int id, char** name, void** func, int* argumentCount);
     public delegate RValue* FindValueDelegate(CInstance* instance, char* name);
+    public delegate RValue* FindAllocValueDelegate(CInstance* instance, char* name);
     public delegate RValue* ArrayGetEntryDelegate(nint array, int index);
     public delegate char* YYGetStringDelegate(RValue* value, int unk);
     public delegate int StructGetKeysDelegate(RValue* value, char** keys, int* count);
@@ -22,6 +23,7 @@ public unsafe class Functions {
     public CodeFunctionFindDelegate CodeFunctionFind = null!;
     public GetTheFunctionDelegate GetTheFunction = null!;
     public FindValueDelegate FindValue = null!;
+    public FindAllocValueDelegate FindAllocValue = null!;
     public ArrayGetEntryDelegate ArrayGetEntry = null!;
     public YYGetStringDelegate YYGetString = null!;
     public StructGetKeysDelegate StructGetKeys = null!;
@@ -45,6 +47,8 @@ public unsafe class Functions {
             addr => { this.GetTheFunction = Marshal.GetDelegateForFunctionPointer<GetTheFunctionDelegate>(addr); });
         this.utils.Scan("E8 ?? ?? ?? ?? 48 85 C0 74 ?? 83 78 ?? ?? 75 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 4D 8B C7",
             addr => { this.FindValue = Marshal.GetDelegateForFunctionPointer<FindValueDelegate>(addr); });
+        this.utils.Scan("E8 ?? ?? ?? ?? 8B D6 4C 8B F8",
+            addr => { this.FindAllocValue = Marshal.GetDelegateForFunctionPointer<FindAllocValueDelegate>(addr); });
         this.utils.Scan("40 53 56 48 83 EC ?? 48 63 F2",
             addr => { this.YYGetString = Marshal.GetDelegateForFunctionPointer<YYGetStringDelegate>(addr); });
         this.utils.Scan("48 83 EC 38 48 89 74 24 ??",

@@ -110,6 +110,13 @@ public unsafe class RNSReloaded : IRNSReloaded, IDisposable {
         return ret;
     }
 
+    public RValue* FindAllocValue(CInstance* instance, string name) {
+        var namePtr = Marshal.StringToHGlobalAnsi(name);
+        var ret = this.functions.FindAllocValue(instance, (char*) namePtr);
+        Marshal.FreeHGlobal(namePtr);
+        return ret;
+    }
+
     public RValue* FindGlobalValue(string name) {
         return this.FindValue(this.GetGlobalInstance(), name);
     }

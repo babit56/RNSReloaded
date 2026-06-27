@@ -74,9 +74,19 @@ public unsafe struct RValue {
         return IRNSReloaded.Instance.FindValue(this.Object, key);
     }
 
+    public RValue* Set(string key, RValue value) {
+        if (this.Type != RValueType.Object) return null;
+        var retVal = IRNSReloaded.Instance.FindAllocValue(this.Object, key);
+        *retVal = value;
+        return retVal;
+    }
+
     // Thanks C# for making indexing a pointer with a number impossible lol
     public RValue* this[int index] => this.Get(index);
-    public RValue* this[string key] => this.Get(key);
+    public RValue* this[string key] {
+        get => this.Get(key);
+        set => this.Set(key, *value);
+    }
 
     public override string ToString() {
         fixed (RValue* ptr = &this) {
