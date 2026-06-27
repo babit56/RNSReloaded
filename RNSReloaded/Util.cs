@@ -126,25 +126,4 @@ public unsafe class Util : IUtil {
         notchNum->Real = hallway.Count;
         notchNum->Type = RValueType.Real;
     }
-
-    public RValue[] add_if_not_null(RValue[] args, string fieldName, int? value) {
-        if (value != null) {
-            return args.Concat([this.CreateString(fieldName)!.Value, new RValue(value.Value)]).ToArray();
-        }
-        return args;
-    }
-
-    public RValue[] add_if_not_null(RValue[] args, string fieldName, bool? value) {
-        if (value != null) {
-            return args.Concat([this.CreateString(fieldName)!.Value, new RValue(value.Value)]).ToArray();
-        }
-        return args;
-    }
-
-    public RValue[] add_if_not_null(RValue[] args, string fieldName, double? value) {
-        if (value != null) {
-            return args.Concat([this.CreateString(fieldName)!.Value, new RValue(value.Value)]).ToArray();
-        }
-        return args;
-    }
 }

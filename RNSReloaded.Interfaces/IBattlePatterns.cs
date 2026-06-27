@@ -109,8 +109,6 @@ public unsafe interface IBattlePatterns {
 
     public void enrage_deco(CInstance* self, CInstance* other, int? warningDelay = null, int? spawnDelay = null);
 
-    public void execute_pattern(CInstance* self, CInstance* other, string pattern, RValue[] args);
-
     // (x, y) refers to the center of the field. Element is which color (purple, yellow, red, blue)
     public void fieldlimit_rectangle(
         CInstance* self, CInstance* other, Position? position = null, int? width = null, int? height = null, int? color = null, int? targetMask = null
