@@ -396,6 +396,13 @@ public unsafe struct CLayer : ILinkedListElement<CLayer> {
         }
         return instances.ToList();
     }
+
+    public string GetName() {
+        if (this.Name == null) {
+            return "Unnamed";
+        }
+        return Marshal.PtrToStringAnsi((nint) this.Name) ?? "Unnamed";
+    }
 }
 
 public enum LayerElementType {
