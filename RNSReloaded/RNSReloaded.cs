@@ -110,13 +110,6 @@ public unsafe class RNSReloaded : IRNSReloaded, IDisposable {
         return ret;
     }
 
-    public RValue* FindAllocValue(CInstance* instance, string name) {
-        var namePtr = Marshal.StringToHGlobalAnsi(name);
-        var ret = this.functions.FindAllocValue(instance, (char*) namePtr);
-        Marshal.FreeHGlobal(namePtr);
-        return ret;
-    }
-
     public RValue* FindGlobalValue(string name) {
         return this.FindValue(this.GetGlobalInstance(), name);
     }
@@ -151,17 +144,13 @@ public unsafe class RNSReloaded : IRNSReloaded, IDisposable {
     }
 
     public List<string> GetStructKeys(RValue* value) {
-        var ret = new List<string>();
-        var count = this.functions.StructGetKeys(value, null, null);
-        var keys = new char*[count];
-
-        fixed (char** keysPtr = keys) {
-            this.functions.StructGetKeys(value, keysPtr, &count);
-            for (var i = 0; i < count; i++) {
-                ret.Add(Marshal.PtrToStringAnsi((nint) keys[i])!);
-            }
+        if (value->Type != RValueType.Object) return [];
+        RValue[] args = [value->Object->ID];
+        RValue arr = IRNSReloaded.Instance.ExecuteCodeFunction("variable_instance_get_names", null, null, args) ?? new RValue([]);
+        List<string> ret = [];
+        foreach (var key in arr.AsSpan()) {
+            ret.Add(key.ToString());
         }
-
         return ret;
     }
 
