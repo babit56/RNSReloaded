@@ -588,6 +588,13 @@ public unsafe struct CLayerElementBase : ILinkedListElement<CLayerElementBase> {
 
     public CLayerElementBase* GetNext() => this.Next;
     public CLayerElementBase* GetPrev() => this.Previous;
+
+    public string GetName() {
+        if (this.Name == null) {
+            return "Unnamed";
+        }
+        return Marshal.PtrToStringAnsi((nint) this.Name) ?? "Unnamed";
+    }
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]

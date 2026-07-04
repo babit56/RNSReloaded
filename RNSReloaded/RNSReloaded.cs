@@ -145,7 +145,7 @@ public unsafe class RNSReloaded : IRNSReloaded, IDisposable {
 
     public List<string> GetStructKeys(RValue* value) {
         if (value->Type != RValueType.Object) return [];
-        RValue[] args = [value->Object->ID];
+        RValue[] args = [value->Object];
         RValue arr = IRNSReloaded.Instance.ExecuteCodeFunction("variable_instance_get_names", null, null, args) ?? new RValue([]);
         List<string> ret = [];
         foreach (var key in arr.AsSpan()) {

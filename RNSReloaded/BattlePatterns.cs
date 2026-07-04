@@ -500,6 +500,10 @@ public unsafe class BattlePatterns : IBattlePatterns {
         this.execute_pattern(self, other, "bp_enrage_deco", args);
     }
 
+    public void erase_patterns_network(CInstance* self, CInstance* other) {
+        this.execute_pattern(self, other, "bp_erase_patterns_network", []);
+    }
+
     // (x, y) refers to the center of the field. Element is which color (purple, yellow, red, blue)
     public void fieldlimit_rectangle(
         CInstance* self, CInstance* other, Position? position = null, int? width = null, int? height = null, int? color = null, int? targetMask = null
